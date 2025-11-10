@@ -1,14 +1,13 @@
-# Environmental Disclosure Documents Chatbot (EcoDigest) using LLM
+# Deploying a medical chatbot on GCP
 
 ## Tech Stack
 
 - LLM Groq  
 - Hugging Face Transformers  
 - FAISS Index 
-- GCP VM  
-- Docker  
-- Minikube  
-- Kubectl  
+- Google Artifact Registry
+- Google Kubernetes Cluster  
+- Circle CI    
 
 ---
 
@@ -92,127 +91,87 @@ Dockerfile
 kubernetes.yaml
 ```
 
+## CI/CD Pipeline
+
+1. Create a `config.yml` inside the .circleci folder.  
+
 ---
 
 ## GCP Environment Setup
 
-### 1. Create a VM Instance
+### 1. Create a GKE Cluster
 
 Use the following configuration:
 
-- Machine Series: E2  
-- Machine Type: Standard  
-- Memory: 16 GB RAM  
-- Boot Disk: 256 GB  
-- Image: Ubuntu 24.04 LTS  
-- Networking: Enable HTTP and HTTPS traffic  
+- Cluster Name: llmops-project
+- Region: us-central1  
+- Access using DNS: Yes  
+- Review and Create 
 
 ---
 
-### 2. Install Docker and Kubernetes Tools
+### 2. Create a Artifact Registry (Repository)
 
-Run the following commands in the SSH terminal of the VM:
+Use the following configuration:
 
-```bash
-sudo apt-get update
-sudo apt-get install ca-certificates curl
-sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
-sudo chmod a+r /etc/apt/keyrings/docker.asc
-
-echo   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu   $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" |   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-
-sudo apt-get update
-sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo groupadd docker
-sudo usermod -aG docker $USER
-newgrp docker
-
-docker run hello-world
-
-curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube-linux-amd64
-sudo install minikube-linux-amd64 /usr/local/bin/minikube && rm minikube-linux-amd64
-minikube start
-
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-sudo snap install kubectl --classic
-kubectl version --client
-```
+- Repo Name: llmops-repo
+- Format: Docker
+- Region: us-central1   
+- Review and Create 
 
 ---
 
-### 3. Clone the Repository
 
-Clone the project repository into your VM instance:
+## Circle CI Setup
 
-```bash
-git clone <repo_url>
-```
+Set up a CircleCI account:
 
----
-
-### 4. Connect GitHub with VS Code and VM
-
-Run the following commands in the VM terminal:
+- Sign up using your Google account. After creating the account, connect it to GitHub to access the repositories.
+- Connect project to CircleCI and set Environment variables. Open CircleCI and go to the projects section.
+- Connect CircleCI to the GitHub account
+- Authorize CircleCI to access your GitHub repositories and select the project repository (CircleCI will automatically detect the .circleci/config.yml file.)
+- Then configure project settings:
+- Add Environment Variables under Project Settings → Environment Variables:
 
 ```bash
-git config --global user.email "JThilinaDK123@gmail.com"
-git config --global user.name "JThilinaDK123"
+GCLOUD_SERVICE_KEY — your Base64-encoded GCP key
+GOOGLE_PROJECT_ID — your GCP project ID
+GKE_CLUSTER — your GKE cluster name
+GOOGLE_COMPUTE_REGION — your compute region
 ```
 
-To push and pull changes between VS Code and the VM:
+How to obtain the `Base64-encoded GCP key`
+
+- Run below code as a 'git bash' command. Copy whole the output (the encoded key)
 
 ```bash
-git add .
-git commit -m "commit"
-git push origin main
-git pull origin main
+cat gcp-key.json | base64 -w 0
 ```
 
-If prompted for a password, create a new GitHub token and use it as your password.  
-The token must have permissions for:
-- repo  
-- admin:org  
-- admin:public_key  
-- admin:org_hook  
+Trigger the CI/CD pipeline !!!!!
 
----
+It will show an error ('llmops-secrets' are not avialble)
 
-## Build and Deploy the Application on GCP VM
+### Apply llmops-secrets to the kubernetes cluster
 
-Once all dependencies are set up, run the following commands inside the project directory.
+Use the following configuration:
 
-### Build Docker Image
+- Navigate to Kubernetes dashboard -> Workloads
+- Click the application name -> Kubectl -> get yaml
+- Paste the below two codes
 
 ```bash
-eval $(minikube docker-env)
-docker build -t llmops-app:latest .
+gcloud container clusters get-credentials llmops-cluster1 \
+--region us-central1 \
+--project gen-lang-client-0729539659
 ```
-
-### Deploy using Kubernetes
 
 ```bash
 kubectl create secret generic llmops-secrets \
- --from-literal=GROQ_API_KEY="" \
- --from-literal=HUGGINGFACEHUB_API_TOKEN=""
-
-kubectl apply -f kubernetes.yaml
+--from-literal=GROQ_API_KEY="your_actual_groq_api_key"
 ```
-
-### Verify Deployment
-
-```bash
-kubectl get pods
-kubectl get services
-minikube tunnel
-```
-
-### Open another SSH terminal
-
-```bash
-kubectl port-forward svc/llmops-service <app-port-number>:80 --address 0.0.0.0
-```
-
-Once the pod is running and the service is exposed, the LLM application (Chatbot) will be deployed successfully.
 
 ---
+
+
+Trigger the CI/CD pipeline Again !!!!!

@@ -1,75 +1,9 @@
-# version: 2.1
-
-# executors:
-#   docker-executor:
-#     docker:
-#       - image: google/cloud-sdk:latest
-#     working_directory: ~/repo
-
-# jobs:
-#   checkout_code:
-#     executor: docker-executor
-#     steps:
-#       - checkout
-
-#   build_docker_image:
-#     executor: docker-executor
-#     steps:
-#       - checkout
-#       - setup_remote_docker
-#       - run:
-#           name: Authenticate with google cloud
-#           command: |
-#               echo "$GCLOUD_SERVICE_KEY" | base64 --decode > gcp-key.json
-#               gcloud auth activate-service-account --key-file=gcp-key.json
-#               gcloud auth configure-docker us-central1-docker.pkg.dev || gcloud auth configure-docker
-
-#       - run:
-#           name: Build and Push Image
-#           command: |
-#               docker build -t us-central1-docker.pkg.dev/$GOOGLE_PROJECT_ID/llmops-repo/llmops-app:latest .
-#               docker push us-central1-docker.pkg.dev/$GOOGLE_PROJECT_ID/llmops-repo/llmops-app:latest
-
-#   deploy_to_gke:
-#     executor: docker-executor
-#     steps:
-#       - checkout
-#       - setup_remote_docker
-#       - run:
-#           name: Authenticate with google cloud
-#           command: |
-#               echo "$GCLOUD_SERVICE_KEY" | base64 --decode > gcp-key.json
-#               gcloud auth activate-service-account --key-file=gcp-key.json
-#               gcloud auth configure-docker us-central1-docker.pkg.dev || gcloud auth configure-docker
-      
-#       - run:
-#           name: Configure GKE
-#           command: |
-#               gcloud container clusters get-credentials $GKE_CLUSTER --region $GOOGLE_COMPUTE_REGION --project $GOOGLE_PROJECT_ID
-#       - run:
-#           name: Deploy to GKE
-#           command: |
-#               kubectl apply -f kubernetes-deployment.yaml --validate=false
-#               kubectl rollout restart deployment llmops-app
-
-# workflows:
-#   version: 2
-#   deploy_pipeline:
-#     jobs:
-#       - checkout_code
-#       - build_docker_image:
-#           requires:
-#             - checkout_code
-#       - deploy_to_gke:
-#           requires:
-#             - build_docker_image
-
 version: 2.1
 
 executors:
   python-docker-executor:
     docker:
-      - image: cimg/python:3.10  # Official CircleCI Python 3.10 image
+      - image: cimg/python:3.10
     working_directory: ~/repo
     environment:
       DOCKER_BUILDKIT: 1
@@ -81,7 +15,7 @@ jobs:
       - checkout
       - setup_remote_docker
 
-      # Install Google Cloud SDK with proper key for Ubuntu Jammy
+      ## Install Google Cloud SDK with proper key for Ubuntu Jammy
       - run:
           name: Install Google Cloud SDK
           command: |
@@ -92,7 +26,7 @@ jobs:
             sudo apt-get update && sudo apt-get install -y google-cloud-cli
             gcloud version
 
-      # Authenticate and push Docker image to Artifact Registry
+      ## Authenticate and push Docker image to Artifact Registry
       - run:
           name: Authenticate and Push Docker Image
           command: |
@@ -109,7 +43,7 @@ jobs:
       - checkout
       - setup_remote_docker
 
-      # Install Google Cloud SDK
+      ## Install Google Cloud SDK
       - run:
           name: Install Google Cloud SDK + kubectl + GKE auth plugin
           command: |
@@ -125,7 +59,7 @@ jobs:
             gcloud version
             kubectl version --client
 
-      # Authenticate and deploy to GKE
+      ## Authenticate and deploy to GKE
       - run:
           name: Authenticate and Deploy
           command: |
@@ -145,3 +79,7 @@ workflows:
       - deploy_to_gke:
           requires:
             - build_docker_image
+
+
+
+
