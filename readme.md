@@ -161,9 +161,9 @@ Use the following configuration:
 - Paste the below two codes
 
 ```bash
-gcloud container clusters get-credentials llmops-cluster1 \
+gcloud container clusters get-credentials llmops-project \
 --region us-central1 \
---project gen-lang-client-0729539659
+--project mlops-thilina
 ```
 
 ```bash
